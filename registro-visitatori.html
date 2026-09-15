@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro collaboratori esterni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#EEF0EA;
+    --card:#FFFFFF;
+    --ink:#1E2A22;
+    --ink-soft:#54604F;
+    --line:#CBD1C3;
+    --line-soft:#DEE2D6;
+    --in:#2E5339;
+    --in-bg:#E2ECE0;
+    --out:#8A5A3B;
+    --out-bg:#F1E7DC;
+    --danger:#A5372B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:1.1rem;
+    margin-bottom:2rem;
+    gap:1rem;
+    flex-wrap:wrap;
+  }
+  .title-block h1{
+    font-family:'Newsreader', serif;
+    font-weight:600;
+    font-size:1.9rem;
+    margin:0 0 .2rem;
+    letter-spacing:.2px;
+  }
+  .title-block input{
+    font-family:'Newsreader', serif;
+    font-style:italic;
+    font-size:1rem;
+    color:var(--ink-soft);
+    border:none;
+    background:transparent;
+    padding:0;
+    width:280px;
+    max-width:60vw;
+  }
+  .title-block input:focus{outline:none;border-bottom:1px solid var(--ink-soft);}
+  .clock{text-align:right;font-variant-numeric:tabular-nums;}
+  .clock .date{font-size:.85rem;color:var(--ink-soft);text-transform:capitalize;}
+  .clock .time{font-size:1.6rem;font-weight:500;}
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:1.4rem 1.5rem;
+    margin-bottom:1.8rem;
+  }
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:1rem;flex-wrap:wrap;}
+  .panel h2{
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:0;
+    font-weight:600;
+  }
+
+  form{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+  .field{display:flex;flex-direction:column;gap:.35rem;}
+  .field.span-3{grid-column:1/-1;}
+  .field label{font-size:.8rem;color:var(--ink-soft);}
+  .field input{
+    font-family:inherit;
+    font-size:.95rem;
+    padding:.55rem .65rem;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field input:focus{outline:none;border-color:var(--in);background:var(--card);}
+  .field.err input{border-color:var(--danger);}
+  .field .msg{font-size:.75rem;color:var(--danger);min-height:1em;}
+
+  .sig-wrap{grid-column:1/-1;}
+  .sig-wrap label{font-size:.8rem;color:var(--ink-soft);display:block;margin-bottom:.35rem;}
+  .sig-box{
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--paper);
+    display:inline-block;
+    position:relative;
+  }
+  canvas#sigPad{display:block;touch-action:none;cursor:crosshair;border-radius:6px;}
+  .sig-actions{display:flex;align-items:center;gap:.8rem;margin-top:.5rem;}
+  .sig-hint{font-size:.75rem;color:var(--ink-soft);}
+  button.link-btn{
+    font-family:inherit;
+    font-size:.8rem;
+    color:var(--ink-soft);
+    background:none;
+    border:none;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:0;
+  }
+  button.link-btn:hover{color:var(--ink);}
+
+  .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;margin-top:.2rem;}
+  button.primary{
+    font-family:inherit;
+    font-size:.9rem;
+    font-weight:600;
+    color:#fff;
+    background:var(--in);
+    border:none;
+    border-radius:6px;
+    padding:.7rem 1.4rem;
+    cursor:pointer;
+  }
+  button.primary:hover{background:#254429;}
+  button.primary:active{transform:scale(.98);}
+
+  button.secondary{
+    font-family:inherit;
+    font-size:.85rem;
+    font-weight:500;
+    color:var(--ink);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:.55rem 1rem;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:.4rem;
+  }
+  button.secondary:hover{border-color:var(--ink);background:var(--paper);}
+
+  .stats{display:flex;gap:1.5rem;margin-bottom:1rem;}
+  .stat{font-size:.85rem;color:var(--ink-soft);}
+  .stat b{color:var(--ink);font-weight:600;}
+
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:920px;}
+  thead th{
+    text-align:left;
+    font-weight:600;
+    font-size:.7rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    border-bottom:1px solid var(--ink);
+    padding:0 .5rem .55rem;
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:.6rem .5rem;
+    border-bottom:1px solid var(--line-soft);
+    vertical-align:middle;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:150px;
+  }
+  tbody tr:hover{background:#F7F8F4;}
+  th.col-n,td.col-n{width:30px;color:var(--ink-soft);max-width:30px;}
+  th.col-stato,td.col-stato{width:90px;white-space:normal;}
+  th.col-firma,td.col-firma{width:70px;text-align:center;}
+  th.col-az,td.col-az{width:96px;text-align:right;white-space:normal;}
+
+  .badge{display:inline-block;font-size:.72rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;}
+  .badge.in{background:var(--in-bg);color:var(--in);}
+  .badge.out{background:var(--out-bg);color:var(--out);}
+
+  .sig-thumb-btn{
+    background:none;border:none;cursor:pointer;padding:0;
+    color:var(--in);font-size:1.1rem;line-height:1;
+  }
+  .sig-none{color:var(--ink-soft);font-size:.8rem;}
+
+  button.exit-btn{
+    font-family:inherit;
+    font-size:.78rem;
+    font-weight:500;
+    color:var(--ink);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:.4rem .6rem;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  button.exit-btn:hover{border-color:var(--ink);background:var(--paper);}
+
+  .empty{text-align:center;color:var(--ink-soft);padding:2.5rem 1rem;font-size:.9rem;}
+
+  footer.note{margin-top:1.5rem;font-size:.78rem;color:var(--ink-soft);line-height:1.6;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(30,42,34,.55);
+    display:flex;align-items:center;justify-content:center;
+    z-index:50;padding:1rem;
+  }
+  .modal-box{
+    background:var(--card);border-radius:10px;padding:1.2rem;
+    max-width:400px;width:100%;
+  }
+  .modal-box h3{margin:0 0 .8rem;font-size:.95rem;font-weight:600;}
+  .modal-box img{width:100%;border:1px solid var(--line);border-radius:6px;background:#fff;}
+  .modal-close{margin-top:1rem;display:flex;justify-content:flex-end;}
+
+  @media (max-width:640px){
+    form{grid-template-columns:1fr;}
+    header{flex-direction:column;align-items:flex-start;}
+    .clock{text-align:left;}
+    canvas#sigPad{width:100%;max-width:340px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1>Registro visitatori</h1>
+    </div>
+    <div class="clock">
+      <div class="date" id="dateOut">—</div>
+      <div class="time" id="timeOut">--:--</div>
+    </div>
+  </header>
+
+  <div class="panel">
+    <h2>Nuovo ingresso</h2>
+    <form id="entryForm" novalidate style="margin-top:1rem;">
+      <div class="field" id="f-nome">
+        <label for="in-nome">Nome e cognome</label>
+        <input id="in-nome" type="text" placeholder="Mario Rossi" autocomplete="off">
+        <div class="msg"></div>
+      </div>
+      <div class="field" id="f-azienda">
+        <label for="in-azienda">Azienda</label>
+        <input id="in-azienda" type="text" placeholder="Rossi S.r.l." autocomplete="off">
+        <div class="msg"></div>
+      </div>
+      <div class="field" id="f-referente">
+        <label for="in-referente">Referente aziendale</label>
+        <input id="in-referente" type="text" placeholder="Chi lo riceve" autocomplete="off">
+        <div class="msg"></div>
+      </div>
+      <div class="field" id="f-reparto">
+        <label for="in-reparto">Reparto</label>
+        <input id="in-reparto" type="text" placeholder="Es. Manutenzione, IT, Logistica" autocomplete="off">
+        <div class="msg"></div>
+      </div>
+      <div class="field span-3" id="f-motivo">
+        <label for="in-motivo">Motivo della visita</label>
+        <input id="in-motivo" type="text" placeholder="Es. Intervento tecnico impianto" autocomplete="off">
+        <div class="msg"></div>
+      </div>
+
+      <div class="sig-wrap">
+        <label>Firma visitatore</label>
+        <div class="sig-box">
+          <canvas id="sigPad" width="360" height="130"></canvas>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="link-btn" id="clearSig">Cancella firma</button>
+          <span class="sig-hint">Firma con il dito o il mouse nel riquadro</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="primary">Registra ingresso</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Registro odierno</h2>
+      <button type="button" class="secondary" id="exportBtn">
+        <i>&#8681;</i> Scarica registro in Excel
+      </button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="statPresent">0</b> presenti</div>
+      <div class="stat"><b id="statTotal">0</b> ingressi oggi</div>
+    </div>
+    <div id="tableWrap"></div>
+  </div>
+
+  <footer class="note">
+    Il registro è condiviso: chiunque apra questa pagina vede e aggiorna gli stessi dati, come un unico foglio digitale in reception. La tabella mostra gli ingressi di oggi; il pulsante Excel esporta lo storico completo salvato, comprese le firme raccolte (segnalate come presenti/assenti in una colonna dedicata, dato che i file .xlsx non incorporano immagini tramite questa esportazione).
+  </footer>
+
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+const KEY = 'registro-collaboratori-esterni';
+let entries = [];
+
+function todayKey(d){ return d.toISOString().slice(0,10); }
+function fmtTime(d){ return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDateShort(d){ return d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtDate(d){ return d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}); }
+
+function updateClock(){
+  const now = new Date();
+  document.getElementById('dateOut').textContent = fmtDate(now);
+  document.getElementById('timeOut').textContent = fmtTime(now);
+}
+updateClock();
+setInterval(updateClock, 1000 * 15);
+
+async function loadEntries(){
+  try{
+    const res = await window.storage.get(KEY, true);
+    entries = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    entries = [];
+  }
+  render();
+}
+
+async function saveEntries(){
+  try{
+    await window.storage.set(KEY, JSON.stringify(entries), true);
+  }catch(e){
+    console.error('Salvataggio non riuscito', e);
+  }
+}
+
+// --- firma (signature pad) ---
+const canvas = document.getElementById('sigPad');
+const ctx = canvas.getContext('2d');
+ctx.lineWidth = 2;
+ctx.lineCap = 'round';
+ctx.strokeStyle = '#1E2A22';
+let drawing = false;
+let hasSignature = false;
+
+function getPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const point = e.touches ? e.touches[0] : e;
+  return { x: (point.clientX - rect.left) * scaleX, y: (point.clientY - rect.top) * scaleY };
+}
+function startDraw(e){
+  drawing = true; hasSignature = true;
+  const p = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  e.preventDefault();
+}
+function moveDraw(e){
+  if(!drawing) return;
+  const p = getPos(e);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  e.preventDefault();
+}
+function endDraw(){ drawing = false; }
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+window.addEventListener('mouseup', endDraw);
+canvas.addEventListener('touchstart', startDraw);
+canvas.addEventListener('touchmove', moveDraw);
+canvas.addEventListener('touchend', endDraw);
+
+document.getElementById('clearSig').addEventListener('click', ()=>{
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  hasSignature = false;
+});
+
+function clearErrors(){
+  ['f-nome','f-azienda','f-referente','f-reparto','f-motivo'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.classList.remove('err');
+    el.querySelector('.msg').textContent = '';
+  });
+}
+
+document.getElementById('entryForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  clearErrors();
+
+  const nome = document.getElementById('in-nome').value.trim();
+  const azienda = document.getElementById('in-azienda').value.trim();
+  const referente = document.getElementById('in-referente').value.trim();
+  const reparto = document.getElementById('in-reparto').value.trim();
+  const motivo = document.getElementById('in-motivo').value.trim();
+
+  let hasError = false;
+  const required = [
+    ['f-nome', nome, 'Inserisci il nome.'],
+    ['f-azienda', azienda, 'Inserisci l\'azienda.'],
+    ['f-referente', referente, 'Inserisci il referente.']
+  ];
+  required.forEach(([id, val, msg])=>{
+    if(!val){
+      const f = document.getElementById(id);
+      f.classList.add('err'); f.querySelector('.msg').textContent = msg;
+      hasError = true;
+    }
+  });
+  if(hasError) return;
+
+  const now = new Date();
+  entries.unshift({
+    id: 'e' + now.getTime() + Math.random().toString(36).slice(2,6),
+    nome, azienda, referente, reparto, motivo,
+    ingresso: now.toISOString(),
+    uscita: null,
+    firma: hasSignature ? canvas.toDataURL('image/png') : null
+  });
+
+  document.getElementById('entryForm').reset();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  hasSignature = false;
+
+  await saveEntries();
+  render();
+});
+
+async function registraUscita(id){
+  const entry = entries.find(x=>x.id===id);
+  if(!entry || entry.uscita) return;
+  entry.uscita = new Date().toISOString();
+  await saveEntries();
+  render();
+}
+window.registraUscita = registraUscita;
+
+function showSignature(id){
+  const entry = entries.find(x=>x.id===id);
+  if(!entry || !entry.firma) return;
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = '<div class="modal-overlay" id="modalOverlay">'
+    + '<div class="modal-box">'
+    + '<h3>Firma di ' + escapeHtml(entry.nome) + '</h3>'
+    + '<img src="' + entry.firma + '" alt="Firma di ' + escapeHtml(entry.nome) + '">'
+    + '<div class="modal-close"><button type="button" class="secondary" id="closeModal">Chiudi</button></div>'
+    + '</div></div>';
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'modalOverlay') closeModal();
+  });
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+window.showSignature = showSignature;
+
+function render(){
+  const now = new Date();
+  const today = todayKey(now);
+  const todays = entries.filter(e => todayKey(new Date(e.ingresso)) === today);
+
+  document.getElementById('statTotal').textContent = todays.length;
+  document.getElementById('statPresent').textContent = todays.filter(e=>!e.uscita).length;
+
+  const wrap = document.getElementById('tableWrap');
+  if(todays.length === 0){
+    wrap.innerHTML = '<div class="empty">Nessun ingresso registrato oggi.</div>';
+    return;
+  }
+
+  const rows = todays.map((e, i) => {
+    const n = todays.length - i;
+    const stato = e.uscita ? '<span class="badge out">Uscito</span>' : '<span class="badge in">Presente</span>';
+    const azione = e.uscita
+      ? fmtTime(new Date(e.uscita))
+      : '<button class="exit-btn" onclick="registraUscita(\'' + e.id + '\')">Registra uscita</button>';
+    const firma = e.firma
+      ? '<button class="sig-thumb-btn" onclick="showSignature(\'' + e.id + '\')" title="Vedi firma">&#9998;</button>'
+      : '<span class="sig-none">&mdash;</span>';
+    return '<tr>'
+      + '<td class="col-n">' + n + '</td>'
+      + '<td>' + escapeHtml(e.nome) + '</td>'
+      + '<td>' + escapeHtml(e.azienda) + '</td>'
+      + '<td>' + escapeHtml(e.motivo || '') + '</td>'
+      + '<td>' + escapeHtml(e.referente) + '</td>'
+      + '<td>' + escapeHtml(e.reparto || '') + '</td>'
+      + '<td>' + fmtTime(new Date(e.ingresso)) + '</td>'
+      + '<td class="col-stato">' + stato + '</td>'
+      + '<td class="col-firma">' + firma + '</td>'
+      + '<td class="col-az">' + azione + '</td>'
+      + '</tr>';
+  }).join('');
+
+  wrap.innerHTML = '<div class="table-scroll"><table>'
+    + '<thead><tr>'
+    + '<th class="col-n">#</th><th>Nome</th><th>Azienda</th><th>Motivo visita</th><th>Referente</th>'
+    + '<th>Reparto</th><th>Ingresso</th><th class="col-stato">Stato</th><th class="col-firma">Firma</th><th class="col-az">Uscita</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(entries.length === 0){
+    alert('Non ci sono ancora ingressi da esportare.');
+    return;
+  }
+  const sorted = [...entries].sort((a,b)=> new Date(a.ingresso) - new Date(b.ingresso));
+  const data = sorted.map(e => ({
+    'Data': fmtDateShort(new Date(e.ingresso)),
+    'Nome e cognome': e.nome,
+    'Azienda': e.azienda,
+    'Motivo visita': e.motivo || '',
+    'Referente aziendale': e.referente,
+    'Reparto': e.reparto || '',
+    'Ora ingresso': fmtTime(new Date(e.ingresso)),
+    'Ora uscita': e.uscita ? fmtTime(new Date(e.uscita)) : '',
+    'Stato': e.uscita ? 'Uscito' : 'Presente',
+    'Firma raccolta': e.firma ? 'Sì' : 'No'
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [
+    {wch:11},{wch:22},{wch:20},{wch:26},{wch:20},{wch:16},{wch:12},{wch:12},{wch:10},{wch:12}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Registro');
+  const fileDate = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'registro-visitatori-' + fileDate + '.xlsx');
+});
+
+loadEntries();
+</script>
+</body>
+</html>
